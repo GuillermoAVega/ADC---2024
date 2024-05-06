@@ -1,0 +1,1 @@
+ -c -mcpu=$(MP_PROCESSOR_OPTION)        -g -omf=elf -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off    -mdfp="${DFP_DIR}/xc16"D:\Usuario\Guille\Compartida\FACULTAD\2° AÑO\Arquitectura de computadoras\Practica\Practica 2\TP2\Punto1.c
