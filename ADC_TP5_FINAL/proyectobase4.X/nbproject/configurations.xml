@@ -7,6 +7,7 @@
       <itemPath>source/common.h</itemPath>
       <itemPath>source/config.h</itemPath>
       <itemPath>source/confbits.h</itemPath>
+      <itemPath>valoresComunes.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"

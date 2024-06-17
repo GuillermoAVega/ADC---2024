@@ -7,7 +7,7 @@ volatile unsigned char hours;
 volatile unsigned char minutes;
 volatile unsigned char seconds;
 extern int counterTog;
-int contadorTMR6 = 0;
+unsigned int contadorTMR6 = 0;
 
 /*---------------------------------------------------------------------
   Function Name: _T4Interrupt

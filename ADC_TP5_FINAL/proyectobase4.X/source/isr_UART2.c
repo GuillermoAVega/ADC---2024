@@ -13,21 +13,20 @@
 *
 **********************************************************************/
 
+#include "valoresComunes.h"
 #include "p33FJ256GP710.h"
+
 
 //UART
 #define FCY 40000000
 #define BAUDRATE 9600
 #define BRGVAL ((FCY / BAUDRATE) / 16) -1
-#define TAM_ARREGLO 256
-#define SOF 0xFE
-#define TRUE 1
-#define FALSE 0
+
 
 int primerCaracter = TRUE;  //Bandera
 int estadoTransporte = FALSE;
-int cant = 0;   //Cantidad de caracteres a enviar
-int i = 0;
+int qty = 0;   //Cantidad de caracteres a enviar
+int k = 0;
 unsigned char bufferRX [TAM_ARREGLO];
 unsigned char bufferTX [TAM_ARREGLO];
 volatile unsigned char uart_update;
@@ -49,18 +48,18 @@ void __attribute__((interrupt, auto_psv)) _U2RXInterrupt( void )
         
     if (bufferRX[0] == SOF){    
         primerCaracter = FALSE;
-        if (i == 1) {           //Si es el primer caracter recibido
-            cant = U2RXREG;     //Asigna la cantidad de caracteres a transmitir
+        if (k == 1) {           //Si es el primer caracter recibido
+            qty = U2RXREG;     //Asigna la cantidad de caracteres a transmitir
         }
         
-        if ((cant - 1) >= i){       //Si quedan caracteres a cargar en el arreglo
-            bufferRX[i] = U2RXREG;   //Cargo el caracter en el arreglo
-            if ((cant - 1) == i){    //Si se transmitieron todos los caracteres
+        if ((qty - 1) >= k){       //Si quedan caracteres a cargar en el arreglo
+            bufferRX[k] = U2RXREG;   //Cargo el caracter en el arreglo
+            if ((qty - 1) == k){    //Si se transmitieron todos los caracteres
                 primerCaracter = TRUE;
-                
+                estadoTransporte = TRUE;
             }
         }           
-        i = i + 1;                  //Incremento el indice del arreglo  
+        k = k + 1;                  //Incremento el indice del arreglo  
     }
 }
 
@@ -70,10 +69,10 @@ void __attribute__((interrupt, auto_psv)) _U2TXInterrupt(void)
 	//Atención. Se debe modificar para que no emita reiteradamente
 	//caracteres
     IFS1bits.U2TXIF = 0;            //Bajo la flag de interrupcion 
-    if((cant != 0)){                //Si no transmitio todos los valores 
-        U2TXREG = bufferRX[i];  //Simple ECO
-        i++;                   
-        cant--;                //Cantidad de caracteres a transferir
+    if(( qty != 0)){                //Si no transmitio todos los valores 
+        U2TXREG = bufferTX[k];  //Simple ECO
+        k++;                   
+        qty--;                //Cantidad de caracteres a transferir
     }
     else {
         primerCaracter = TRUE;
