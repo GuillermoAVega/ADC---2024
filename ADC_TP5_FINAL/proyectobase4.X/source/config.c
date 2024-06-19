@@ -23,18 +23,21 @@ void config( void )
 
 	//Inicialización de PORTS I/O
 	/* (RA0-RA7) como salidas - LEDs */
-    TRISD = 0x20C0;
     TRISA = 0xFF00; 
+    TRISB = 0x0000;
+    TRISD = 0x20C0;
    
     //Habilitar los change notification
     CNEN1bits.CN15IE = 1;
     CNEN2bits.CN16IE = 1;
     CNEN2bits.CN19IE = 1;
+    IEC1bits.CNIE = 1;
     		
 	/* Initializar UART2*/
 	InitUART2();
 
 	/* Inicializar Timers necesarios */
 	Init_Timer4();
+    Init_Timer6(); 
 
 }

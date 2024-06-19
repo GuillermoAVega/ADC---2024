@@ -1,0 +1,1 @@
+ -c -mcpu=$(MP_PROCESSOR_OPTION)        -g -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -O0 -I"../../../../../../../../opt/microchip/xc16/v1.20/support/dsPIC33F/h" -msmart-io=1 -Wall -msfr-warn=off   D:\Usuario\Guille\Compartida\FACULTAD\2° AÑO\Arquitectura de computadoras\Practica\ADC_TPS\ADC_TP5_FINAL\proyectobase4.X\source\config.c

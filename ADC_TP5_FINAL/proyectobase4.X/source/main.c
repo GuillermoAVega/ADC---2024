@@ -40,17 +40,24 @@
 #define E 0x45
 #define F 0x46
 #define G 0x47
-
+#define Z 0x5A
 //Valores del paquete
 #define SEC 0x80
 #define DST 2
 #define SRC 3
 
 //Valores para calculo de velocidad
-#define DISTANCIA 40
+#define DISTANCIA 40.0
 #define FACTOR_CONVERSION (3600000/100000)
 
+extern unsigned char bufferRX[TAM_ARREGLO];
+extern unsigned char bufferTX [TAM_ARREGLO];
+extern unsigned char qty; 
+extern unsigned char j;
+extern unsigned int contadorTMR6;
 
+
+//Informacion de un vehiculo
 struct vehiculo {
     unsigned char hora;
     unsigned char minutos;
@@ -59,35 +66,29 @@ struct vehiculo {
     unsigned char cantEjes;
 }; 
 
-
+//Arreglo de vehiculos
 struct vehiculo registroVehiculos[TAM_ARREGLO];
-extern unsigned char bufferRX[TAM_ARREGLO];
-extern unsigned char bufferTX [TAM_ARREGLO];
-extern unsigned char qty; 
-extern unsigned char k;
-extern int contadorTMR6;
 
-int counterTog = 0;
+//Contadores
+unsigned int counterTog = 0;
 unsigned char indice_vehiculos = 0;
 unsigned char vehiculosDosEjes = 0;
 unsigned char vehiculosMasEjes = 0;
-unsigned char cantidadCaracteres = 0;
 
-//Datos 
-unsigned char horaAuto = 0;
-unsigned char minutoAuto = 0;
-unsigned char segundoAuto = 0;
+//Datos DATALOGGER
+unsigned char horaVehiculo = 0;
+unsigned char minutoVehiculo = 0;
+unsigned char segundoVehiculo = 0;
 unsigned char ejes = 0;
-unsigned char velocidad = 0;
+unsigned int velocidad = 0;
 
 //indices
-unsigned char j = 0;
 unsigned char i = 0;
-unsigned char p =0;
+unsigned char k =0;
+unsigned int contador =0;
 
 //Banderas
 int primeraMedicion = TRUE;
-int checksumCorrecto = FALSE;
 int estadoAplicacion = FALSE;
 extern int estadoTransporte;
 
@@ -122,7 +123,7 @@ void cargarVehiculos(void){
     
     registroVehiculos[indice_vehiculos].segundos = 26;
     registroVehiculos[indice_vehiculos].minutos = 7;
-    registroVehiculos[indice_vehiculos].hora = 20;
+    registroVehiculos[indice_vehiculos].hora = 21;
     registroVehiculos[indice_vehiculos].cantEjes = 2;
     registroVehiculos[indice_vehiculos].velocidad = 95; 
     indice_vehiculos++;
@@ -131,13 +132,13 @@ void cargarVehiculos(void){
     
     registroVehiculos[indice_vehiculos].segundos = 12;
     registroVehiculos[indice_vehiculos].minutos = 35;
-    registroVehiculos[indice_vehiculos].hora = 20;
+    registroVehiculos[indice_vehiculos].hora = 21;
     registroVehiculos[indice_vehiculos].cantEjes = 3;
     registroVehiculos[indice_vehiculos].velocidad = 50; 
     vehiculosMasEjes++;
 
     
-    
+  
     bufferTX[0] = 0xFE;
     bufferTX[1] = 0x08;    
     bufferTX[2] = 0x03;
@@ -146,48 +147,67 @@ void cargarVehiculos(void){
     bufferTX[5] = 0x42;
     bufferTX[6] = 0x81;
     bufferTX[7] = 0x4C;    
+
 }
 
 
+void delay (void){
+    for (contador = 0; contador < 100; contador++);
+}
+
+void actualizarDatosPuerto(void){
+        PORTB = indice_vehiculos;
+        delay();
+        PORTB = velocidad;
+        delay();
+        PORTB = segundoVehiculo;
+        delay();
+        PORTB = minutoVehiculo;
+        delay();
+        PORTB = horaVehiculo;
+}
 
 
 void calcularVelocidad (void){
-    velocidad = (DISTANCIA / contadorTMR6) * FACTOR_CONVERSION;       
+    velocidad = ((DISTANCIA / contadorTMR6) * FACTOR_CONVERSION);       
     
     if (velocidad > 60){
-        PORTAbits.RA0 ^= 1;
+        PORTAbits.RA0 ^= 1;  //Accionamos camara fotografica
     }
 }
 
 void __attribute__((interrupt, auto_psv)) _CNInterrupt( void ){
+    IFS1bits.CNIF = 0;
     
     if (PORTDbits.RD13){
       
         if (PORTDbits.RD6){
             ejes++;
             if (primeraMedicion){
-                T4CONbits.TON = 1;
-                segundoAuto = seconds;
-                minutoAuto = minutes;
-                horaAuto = hours;            
+                T6CONbits.TON = 1;
+                segundoVehiculo = seconds;
+                minutoVehiculo = minutes;
+                horaVehiculo = hours;            
             }
         }
         if (PORTDbits.RD7){               
             if (primeraMedicion){
-                T4CONbits.TON = 0;
+                T6CONbits.TON = 0;
                 calcularVelocidad();
+                TMR6 = 0;
+                contadorTMR6 = 0;
                 primeraMedicion = FALSE;
             }
         }
     }   
-    else{
+    else if (! primeraMedicion){  //Si se realizo la primer medicion.
         
-        registroVehiculos[indice_vehiculos].segundos = segundoAuto;
-        registroVehiculos[indice_vehiculos].minutos = minutoAuto;
-        registroVehiculos[indice_vehiculos].hora = horaAuto;
+        registroVehiculos[indice_vehiculos].segundos = segundoVehiculo;
+        registroVehiculos[indice_vehiculos].minutos = minutoVehiculo;
+        registroVehiculos[indice_vehiculos].hora = horaVehiculo;
         registroVehiculos[indice_vehiculos].cantEjes = ejes;
         registroVehiculos[indice_vehiculos].velocidad = velocidad;
-
+        
         if (ejes == 2)
             vehiculosDosEjes++;
         else
@@ -196,6 +216,7 @@ void __attribute__((interrupt, auto_psv)) _CNInterrupt( void ){
         ejes = 0;
         indice_vehiculos++;
         primeraMedicion = TRUE;   
+        actualizarDatosPuerto();
     }           
 }
 
@@ -214,7 +235,6 @@ void calcularChecksum(unsigned char* arreglo){
         }
     }
 
-    checksum_calculado = checksum_calculado;
     checksum_calculado = BCCH_calculado << 8;
     checksum_calculado = checksum_calculado + BCCL_calculado;
 
@@ -223,21 +243,19 @@ void calcularChecksum(unsigned char* arreglo){
 }
 
 
-
 void capaTransporte (void){
-    k = 0;
-    cantidadCaracteres = bufferRX[1];
     BCCH_recibido = bufferRX[qty - 2];
-    BCCL_recibido = bufferRX[qty -1];   //cantidadCaracteres
+    BCCL_recibido = bufferRX[qty -1];   
     
     if (bufferRX[2] == 3){
         calcularChecksum (bufferRX);
         if (BCCH_calculado != BCCH_recibido || BCCL_calculado != BCCL_recibido){   
-            bufferRX[5] = G; //Asignamos un NACK
+            bufferRX[5] = Z; //Asignamos valor invalido para enviar un NACK.
         }
+        estadoAplicacion = TRUE; 
     }
+ 
     estadoTransporte = FALSE;
-    estadoAplicacion = TRUE; 
 }
 
 void capaAplicacion (void){
@@ -249,15 +267,15 @@ void capaAplicacion (void){
         j = 5;
 
         switch (bufferRX[5]){
-
         case A:
             bufferTX[j] = bufferRX[j];
             j++;
             bufferTX[j] = vehiculosDosEjes;
             break;
-        case E:
-              PORTAbits.RA0 ^= 1;            
         case B:
+            indice_vehiculos = 0;
+            vehiculosDosEjes = 0;
+            vehiculosMasEjes = 0;
             bufferTX[j] = F; //Asignamos un ACK
             break;
 
@@ -266,6 +284,7 @@ void capaAplicacion (void){
             j++;
             bufferTX[j] = vehiculosMasEjes;
             break;
+        
         case D:
 
             hora_recibida = bufferRX[j + 1];
@@ -274,40 +293,46 @@ void capaAplicacion (void){
             }
             else {
                 bufferTX[j] = D;
-                p = 0;
+                k = 0;
 
-                while (p <= indice_vehiculos && registroVehiculos[p].hora <= hora_recibida){
-                    if (registroVehiculos[p].hora == hora_recibida){
+                while (k <= indice_vehiculos && registroVehiculos[k].hora <= hora_recibida){
+                    if (registroVehiculos[k].hora == hora_recibida){
                         j++;
                         bufferTX[j] = hora_recibida; 
                         j++;
-                        bufferTX[j] = registroVehiculos[p].minutos;
+                        bufferTX[j] = registroVehiculos[k].minutos;
                         j++;     
-                        bufferTX[j] = registroVehiculos[p].segundos;
+                        bufferTX[j] = registroVehiculos[k].segundos;
                         j++;    
-                        bufferTX[j] = registroVehiculos[p].velocidad;
+                        bufferTX[j] = registroVehiculos[k].velocidad;
                         j++; 
-                        bufferTX[j] = registroVehiculos[p].cantEjes;         
+                        bufferTX[j] = registroVehiculos[k].cantEjes;         
                     }
-                    p++;
+                    k++;
                 }
             }
      
             break;
+        
+        case E:
+              PORTAbits.RA0 ^= 1;   
+              bufferTX[j] = F;
+            break;    
+                
         default:
             bufferRX[j] = G; //ENVIAR NACK 
         }
-
-        bufferTX[1] = j + 3;
+        
+        bufferTX[1] = j + 3;  //2 posiciones del BCC y 1 dado que el arreglo comienza en 0
         calcularChecksum (bufferTX);
         bufferTX[j + 1] = BCCH_calculado;
         bufferTX[j + 2] = BCCL_calculado; 
         qty = bufferTX[1];       
-
     }
-    if (bufferRX[5] != F){
+    if (bufferRX[5] != F){  //Si es distinto de un ACK comienza la transmision
         IFS1bits.U2TXIF = 1;
-    }    
+    }
+    k = 0;
     estadoAplicacion = FALSE;
 }
 
@@ -340,8 +365,6 @@ void UpdateClock (void)
 int main ( void )
 {
     config();
-    // AGREGAR UNA FUNCION QUE PRECARGUE AUTOS DE ANTEMANO
-    /* Loop infinito */
     cargarVehiculos();
     while (TRUE)
     {
@@ -353,11 +376,9 @@ int main ( void )
         }
         if (estadoAplicacion){
             capaAplicacion();
-
-        }
+        }                        
     }
 }
 
-// AGREGAR UN SEGUN CON LOS POSIBLES ESTADOS
 
 

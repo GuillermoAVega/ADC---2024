@@ -19,7 +19,6 @@ void __attribute__((interrupt, auto_psv)) _T4Interrupt( void )
 {
 	/* reset Timer 4 interrupt flag */
  	IFS1bits.T4IF = 0;
-	//T4CONbits.TON = 0; 	//Deshabilito Timer
 	counterTog ++;
 
 }
@@ -86,6 +85,6 @@ void Init_Timer6( void )
  	  	
 	/* set Timer period register */
 	PR6 = ValPR6;
-	T6CONbits.TON = 1; 	//habilito Timer
+	T6CONbits.TON = 0; 	//habilito Timer
 
 }

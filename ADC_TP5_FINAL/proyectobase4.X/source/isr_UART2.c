@@ -19,17 +19,17 @@
 
 //UART
 #define FCY 40000000
-#define BAUDRATE 9600
+#define BAUDRATE 19200
 #define BRGVAL ((FCY / BAUDRATE) / 16) -1
 
 
 int primerCaracter = TRUE;  //Bandera
 int estadoTransporte = FALSE;
 int qty = 0;   //Cantidad de caracteres a enviar
-int k = 0;
+unsigned int j = 0;
 unsigned char bufferRX [TAM_ARREGLO];
 unsigned char bufferTX [TAM_ARREGLO];
-volatile unsigned char uart_update;
+
 
 
 /*---------------------------------------------------------------------
@@ -48,30 +48,27 @@ void __attribute__((interrupt, auto_psv)) _U2RXInterrupt( void )
         
     if (bufferRX[0] == SOF){    
         primerCaracter = FALSE;
-        if (k == 1) {           //Si es el primer caracter recibido
+        if (j == 1) {           //Si es el primer caracter recibido
             qty = U2RXREG;     //Asigna la cantidad de caracteres a transmitir
         }
         
-        if ((qty - 1) >= k){       //Si quedan caracteres a cargar en el arreglo
-            bufferRX[k] = U2RXREG;   //Cargo el caracter en el arreglo
-            if ((qty - 1) == k){    //Si se transmitieron todos los caracteres
+        if ((qty - 1) >= j){       //Si quedan caracteres a cargar en el arreglo
+            bufferRX[j] = U2RXREG;   //Cargo el caracter en el arreglo
+            if ((qty - 1) == j){    //Si se transmitieron todos los caracteres
                 primerCaracter = TRUE;
                 estadoTransporte = TRUE;
             }
         }           
-        k = k + 1;                  //Incremento el indice del arreglo  
+        j = j + 1;                  //Incremento el indice del arreglo  
     }
 }
 
-//Rutina de INT para transmisión (no hace nada)
 void __attribute__((interrupt, auto_psv)) _U2TXInterrupt(void)
 {
-	//Atención. Se debe modificar para que no emita reiteradamente
-	//caracteres
     IFS1bits.U2TXIF = 0;            //Bajo la flag de interrupcion 
     if(( qty != 0)){                //Si no transmitio todos los valores 
-        U2TXREG = bufferTX[k];  //Simple ECO
-        k++;                   
+        U2TXREG = bufferTX[j];  //Simple ECO
+        j++;                   
         qty--;                //Cantidad de caracteres a transferir
     }
     else {
@@ -92,18 +89,18 @@ void InitUART2(void)
 	// configure U2MODE
 	U2MODEbits.UARTEN = 0;	// Bit15 TX, RX DISABLED, ENABLE at end of func
 	U2MODEbits.RTSMD = 1;	// Bit11 Simplex Mode
-
+    U2MODEbits.PDSEL = 0;   //8 bits sin paridad
+    U2MODEbits.STSEL = 0;   //1 bit de stop
+    U2MODEbits.BRGH = 0; //Low Speed 
 	// Load a value into Baud Rate Generator.  Example is for 9600.
-	U2BRG = BRGVAL;	// 40Mhz osc, 9600 Baud
+	U2BRG = BRGVAL;	// 40Mhz osc, 19200 Baud
 
 	IPC7 = 0x4400;	// Mid Range Interrupt Priority level, no urgent reason
 
-	IFS1bits.U2RXIF = 0;	// Clear the Recieve Interrupt Flag
-	IEC1bits.U2RXIE = 1;	// Enable Recieve Interrupts
-
-	U2MODEbits.UARTEN = 1;	// And turn the peripheral on
+    U2MODEbits.UARTEN = 1;	// And turn the peripheral on
 	U2STAbits.UTXEN = 1;	// Empieza a transmitir. Se dispara el Flag TXIF
-
-	IFS1bits.U2TXIF = 0;	// Clear the Transmit Interrupt Flag
-	IEC1bits.U2TXIE = 1;	// Enable Transmit Interrupts
+    IFS1bits.U2TXIF = 0;	// Clear the Transmit Interrupt Flag
+    IEC1bits.U2RXIE = 1;	// Enable Recieve Interrupts
+    IFS1bits.U2RXIF = 0;	// Clear the Recieve Interrupt Flag
+    IEC1bits.U2TXIE = 1;	// Enable Transmit Interrupts    
 }
